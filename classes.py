@@ -16,12 +16,11 @@ class UsageClassfier(BaseModel):
     retirement_age: Optional[int] = None
     martial_status: Optional[str] = ""
     children: Optional[int] = None
-
     stocks : Optional[List[str]] = []
 
 class AppState(TypedDict):
     usage : str
-    stocks : List
+    stocks : Optional[List[str]] = []
 
     #Agent Outputs
     portfolio : str

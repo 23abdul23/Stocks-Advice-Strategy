@@ -6,10 +6,16 @@ from dotenv import load_dotenv
 from google import genai
 from google.genai import types
 
+import requests, random, json
+import finnhub
+
 
 from classes import *
+from stocks import NIFTY50
 
 load_dotenv()
+NIFTY50 = list(NIFTY50)
+
 MODEL = "llama-3.1-8b-instant"
 
 llm = ChatGroq(
@@ -39,7 +45,7 @@ def usage_extractor(state: UsageClassfier) -> UsageClassfier:
 
     3. "invalid" — if the query is unrelated to investing or not understandable
 
-    Return fields `usage` with value: "advice", "strategy", or "invalid" and `stocks` as a list consisting of stock names as it's elements.
+    Return fields `usage` with value: "advice", "strategy", or "invalid" and `stocks` as a list with  STOCKS SYMBOLS like 'TATASTEEL' for Tata Steel or Tata, as it's elements.
     """
 
     usage_llm = llm.with_structured_output(UsageClassfier)
@@ -86,7 +92,7 @@ def portfolio_builder(state: UsageClassfier) -> UsageClassfier:
     - retirement_age (int): Desired retirement age if mentioned, or Appropriate age for retirement ->60.
     - martial_status (str): "married", "single", etc. Else "".
     - children (int): Number of children, or 0.
-    - stocks (list): Add any interested stocks mentioned by user to existing stocks list.
+    - stocks (list): Add STOCKS SYMBOLS like 'TATASTEEL' for Tata Steel or Tata, if any interested stocks mentioned by user to existing stocks list.
     
     Return only structured output with these exact fields.
     """
@@ -152,7 +158,7 @@ def portfolio_summariser(state: UsageClassfier) -> AppState:
     new_state['portfolio'] = response.content
     new_state['stocks'] = state.stocks
 
-    print(new_state['portfolio'])
+    #print(new_state['portfolio'])
     return new_state
 
 
@@ -165,8 +171,13 @@ def usage_check(state: AppState):
         return "invalid"
 
 #Node News Extractor for every stock present in the users query
-def news_extractor(state: AppState) -> AppState:
+# def news_extractor(state: AppState) -> AppState:
+def news_extractor():
+    
     return None
+    
+#news_extractor()
+
 
 def macro_economic(state: AppState) -> AppState:
     return None

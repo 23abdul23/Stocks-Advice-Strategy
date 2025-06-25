@@ -84,38 +84,31 @@ user_query = st.text_input("Ask your financial question (e.g., 'Advice related t
 
 if st.button("Get Solution"):
     if user_query:
-
-        print(user_query)
-        state = UsageClassfier(user_query= user_query)
-        
+        state = UsageClassfier(user_query=user_query)
         state = usage_extractor(state)
-    
-        if (state.usage == "strategy"):
-            st.subheader("Enter Your Portfolio Details")
-            user_query = st.text_input(
-                    "Please provide details about your investing profile, such as:\n"
-                    "- Age\n"
-                    "- Job type and title\n"
-                    "- Monthly income and side income\n"
-                    "- Years of investing experience\n"
-                    "- Investment goal and duration\n"
-                    "- Risk preference (low, moderate, high)\n"
-                    "- Marital status and number of children\n"
-                    "- Target retirement age\n"
-                    "- Any stocks you're currently holding or interested in"
-                )
-            
-            if st.button("Strategize"):
-                if user_query:
-                    state.user_query = user_query
-                    state = portfolio_summariser(portfolio_builder(state))
-                    st.write(state['portfolio'])
+        st.session_state.usage = state.usage
+        st.session_state.state = state  # store whole object if needed
 
-        elif (state.usage == 'advice'):
-            st.write("Giving You Advice, Shortly")
+# Now handle strategy branch
+if "usage" in st.session_state and st.session_state.usage == "strategy":
+    st.subheader("Enter Your Portfolio Details")
+    portfolio_query = st.text_input("Provide Portfolio Information")
 
-        elif (state.usage == 'invalid'):
-            st.write("Query is Invlaid")
+    if st.button("Strategize"):
+        if portfolio_query:
+            state = UsageClassfier(user_query=portfolio_query)
+            state = portfolio_summariser(portfolio_builder(state))
+
+
+            st.write(state['portfolio'])
+            st.write(state['stocks'])
+
+elif "usage" in st.session_state and st.session_state.usage == "advice":
+    st.write("Giving You Advice, Shortly")
+    st.write(state.stocks)
+
+elif "usage" in st.session_state and st.session_state.usage == "invalid":
+    st.write("Query is Invlaid")
 
                    
 
