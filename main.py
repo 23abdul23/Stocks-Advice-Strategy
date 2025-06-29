@@ -61,63 +61,95 @@ app = graph.compile()
 
 
 #App Title
-st.title("Stock Adivce/Strategy")
+st.markdown("<h1 style='text-align: center; color: #4CAF50;'>📈 Stock Advice & Strategy Assistant</h1>", unsafe_allow_html=True)
+
+st.markdown("---")
+
+st.markdown(
+    """
+    <style>
+        .stMarkdown {
+            max-width: 100%;
+            margin: auto;
+        }
+        .css-18ni7ap {  /* targets the main block */
+            max-width: 1200px;
+            padding-left: 3rem;
+            padding-right: 3rem;
+        }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
 
 # User Input Section
-st.subheader("Enter Your Query")
-user_query = st.text_input("Ask your financial question (e.g., 'Advice related to NVIDIA Stocks', 'Give me trading strategy based on my portfolio')")
+st.markdown("### 🧾 Enter Your Query")
+user_query = st.text_input("💬 Example: 'Advice related to NVIDIA Stocks' or 'Give me trading strategy based on my portfolio'")
 
-if st.button("Get Solution"):
+if st.button("🚀 Get Solution"):
     if user_query:
         state = UsageClassfier(user_query=user_query)
         state = usage_extractor(state)
         st.session_state.usage = state.usage
-        st.session_state.state = state  # store whole object if needed
+        st.session_state.state = state
 
-# Now handle strategy branch
 if "usage" in st.session_state and st.session_state.usage == "strategy":
-    st.subheader("Enter Your Portfolio Details")
-    portfolio_query = st.text_input("Provide Portfolio Information")
+    st.markdown("---")
+    st.markdown("### 📊 Provide Your Portfolio Details")
+    portfolio_query = st.text_area("🗂️ Your Portfolio Information", height=200)
 
-    if st.button("Strategize"):
+    if st.button("🧠 Strategize"):
         if portfolio_query:
             state = UsageClassfier(user_query=portfolio_query)
             state = portfolio_summariser(portfolio_builder(state))
-            st.write(state['portfolio'])
+            st.success("📄 Portfolio Summary")
+            st.markdown(f"<div style='background-color:#4a4646;padding:10px;border-radius:5px;'>{state['portfolio']}</div>", unsafe_allow_html=True)
+
             
             stocks = random.choices(list(NASDAQ), k = 4)
-            print(stocks)
-            state['stocks'] = stocks
-            st.write(state['stocks'])
+
+            if (len(state['stocks']) != 0):
+                state['stocks'] = state['stocks'] + stocks
+                print(type(state['stocks']), state['stocks'])
+            else:
+                state['stocks'] = stocks
+                print(type(state['stocks']), state['stocks'])
+            
+
+            st.info(f"📌 Selected Stocks: `{state['stocks']}`")
             state = news_extractor(state, 3)
             state = news_report(state)
+            
+            st.markdown("### 🗞️ Market News Sentiment")
+            st.code(state['market_news'])
 
-            st.write(state['market_news'])
             state = macro_economic(state)
             state = market_trends(state)
-            st.write(state['market_trends'])
+            st.markdown("### 📈 Market Trends")
+            st.code(state['market_trends'])
+
             state = strategy(state)
-            st.write(state['strategy'])
+            st.markdown("### 🧭 Personalized Strategy")
+            st.code(state['strategy'])
 
 elif "usage" in st.session_state and st.session_state.usage == "advice":
     state = UsageClassfier(user_query=user_query)
     state = usage_extractor(state)
     state = AppState(user_query= state.user_query, stocks= state.stocks)
-    st.write(state['stocks'])
-    state = news_extractor(state, 3)
-    state = news_report(state)
+    st.success(f"📌 Stocks Detected: `{state['stocks']}`")
 
-    st.write(state['market_news'])
+    state = news_report(state)
+    st.markdown("### 📰 News Sentiment")
+    st.code(state['market_news'])
+
     state = macro_economic(state)
     state = market_trends(state)
-    st.write(state['market_trends'])
+    st.markdown("### 🔍 Market Trends")
+    st.code(state['market_trends'])
+
     state = advice(state)
-    st.write(state['advice'])
+    st.markdown("### 💡 Expert Advice")
+    st.code(state['advice'])
 
 elif "usage" in st.session_state and st.session_state.usage == "invalid":
-    st.write("Query is Invlaid")
-
-                   
-
-       
-        
+    st.error("❗ Your query seems unrelated to financial advice or strategy.")

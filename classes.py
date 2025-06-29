@@ -3,7 +3,7 @@ from pydantic import BaseModel, Field
 
 class UsageClassfier(BaseModel):
     user_query: str
-    usage: Optional[Literal["advice", "strategy", "invalid"]] = None
+    usage: Optional[Literal["advice", "strategy", "invalid"]] = "invalid"
     age: Optional[int] = None
     job_type: Optional[str] = ""
     job: Optional[str] = ""
@@ -12,7 +12,7 @@ class UsageClassfier(BaseModel):
     investment_goal: Optional[str] = ""
     investment_duration: Optional[str] = ""
     risk_preference: Optional[float] = None
-    investing_years: Optional[int] = None
+    investing_years: Optional[int] = None   
     retirement_age: Optional[int] = None
     martial_status: Optional[str] = ""
     children: Optional[int] = None

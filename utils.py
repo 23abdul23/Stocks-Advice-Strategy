@@ -100,24 +100,29 @@ def usage_extractor(state: UsageClassfier) -> UsageClassfier:
     print('\n',"Determining whether the user wants advice, strategy, or neither.\n")
 
     prompt = """
-    Classify the user's query into one of the following intents and also reterieve the symbols of any stocks mentioned in the query as a list else the list is empty:
+    Classify the user's query into one of the following intents and also retrieve the symbols of any stocks mentioned in the query as a list, else the list is empty:
 
     1. "advice" — if the user is asking:
-       - whether to buy/sell/hold a stock
-       - about the future of a specific company
-       - for stock recommendations
-       - about price movements
+    - whether to buy/sell/hold a stock
+    - about the future of a specific company or sector
+    - for stock recommendations
+    - about price movements
+    - if it is the right time to invest in a company/sector
+    - indirect questions like "Should I look into Microsoft?" or "Can I enter the tech sector?"
 
     2. "strategy" — if the user is asking:
-       - direct mention of strategy or roadmap
-       - how to start investing
-       - about investment plans, timeframes, or long-term goals
-       - about portfolio structuring, risk allocation, or retirement planning
+    - direct mention of strategy, roadmap, or plan
+    - how to start investing
+    - about investment duration or long-term goals
+    - about portfolio structuring, risk allocation, or retirement planning
 
     3. "invalid" — if the query is unrelated to investing or not understandable
 
-    Return fields `usage` with value: "advice", "strategy", or "invalid" and `stocks` as a list with  STOCKS SYMBOLS like 'TATASTEEL' for Tata Steel or Tata, as it's elements.
+    Return only JSON output with these exact fields:
+    - `usage`: One of "advice", "strategy", or "invalid"
+    - `stocks`: A list of stock **symbols** (e.g., ["AAPL", "GOOGL"]), extracted from the companies mentioned
     """
+
 
     usage_llm = llm.with_structured_output(UsageClassfier)
     extraction = usage_llm.invoke([
@@ -160,7 +165,7 @@ def portfolio_builder(state: UsageClassfier) -> UsageClassfier:
     - retirement_age (int): Desired retirement age if mentioned, or Appropriate age for retirement ->55.
     - martial_status (str): "married", "single", "bachelor", etc. Else "single".
     - children (int): Number of children, or 0.
-    - stocks (list): Add STOCKS SYMBOLS like 'TATASTEEL' for Tata Steel or Tata, if any interested stocks mentioned by user to existing stocks list.
+    - stocks (list): Add STOCKS SYMBOLS like 'AXP ' for American Express, if any interested stocks mentioned by user to existing stocks list.
     
     Return only structured output with these exact fields.
     """
@@ -319,47 +324,51 @@ def macro_economic(state: AppState) -> AppState:
     macro_economic_dict = {}
     
     for stock in stocks:
-        info = FIN_CLIENT.company_basic_financials(stock, 'all')
-        economic = {
-            category: {
-                fields[field]: info["metric"].get(field, None)  
-                for field in fields
-            }
-            for category, fields in macro_terms.items()
-        }
+        try:
+            df = yf.download(stock, period="12mo", interval="1d")
+            df.dropna(inplace=True)
 
+            if isinstance(df.columns, pd.MultiIndex):
+                df.columns = df.columns.get_level_values(0)
+
+
+            # Now apply RSI
+            df["RSI"] = ta.rsi(df["Close"], length=14)
+
+            macd = ta.macd(df["Close"])
+            df["MACD_Line"] = macd["MACD_12_26_9"]
+            df["MACD_Signal"] = macd["MACDs_12_26_9"]
+            df["SMA_20"] = ta.sma(df["Close"], length=20)
+            df["EMA_20"] = ta.ema(df["Close"], length=20)
+
+
+            bbands = ta.bbands(df["Close"], length=20)
+            df["BB_upper"]  = bbands["BBU_20_2.0"]
+            df["BB_middle"] = bbands["BBM_20_2.0"]
+            df["BB_lower"]  = bbands["BBL_20_2.0"]
+            df["BB_bandwidth"] = bbands["BBB_20_2.0"]
+            df["BB_percent"]   = bbands["BBP_20_2.0"]
+
+            today = {}
+            for idx, row in df.tail(1).iterrows():
+                for col, val in row.items():
+                    today[col] = val
             
-        df = yf.download(stock, period="12mo", interval="1d")
-        df.dropna(inplace=True)
 
-        if isinstance(df.columns, pd.MultiIndex):
-            df.columns = df.columns.get_level_values(0)
+            info = FIN_CLIENT.company_basic_financials(stock, 'all')
+            economic = {
+                category: {
+                    fields[field]: info["metric"].get(field, None)  
+                    for field in fields
+                }
+                for category, fields in macro_terms.items()
+            }
 
+            economic['Today'] = today
+            macro_economic_dict[stock] = economic
 
-        # Now apply RSI
-        df["RSI"] = ta.rsi(df["Close"], length=14)
-
-        macd = ta.macd(df["Close"])
-        df["MACD_Line"] = macd["MACD_12_26_9"]
-        df["MACD_Signal"] = macd["MACDs_12_26_9"]
-        df["SMA_20"] = ta.sma(df["Close"], length=20)
-        df["EMA_20"] = ta.ema(df["Close"], length=20)
-
-
-        bbands = ta.bbands(df["Close"], length=20)
-        df["BB_upper"]  = bbands["BBU_20_2.0"]
-        df["BB_middle"] = bbands["BBM_20_2.0"]
-        df["BB_lower"]  = bbands["BBL_20_2.0"]
-        df["BB_bandwidth"] = bbands["BBB_20_2.0"]
-        df["BB_percent"]   = bbands["BBP_20_2.0"]
-
-        today = {}
-        for idx, row in df.tail(1).iterrows():
-            for col, val in row.items():
-                today[col] = val
-        economic['Today'] = today
-
-        macro_economic_dict[stock] = economic
+        except:
+            continue
         
     state['macro_economics_dict'] = macro_economic_dict
     
