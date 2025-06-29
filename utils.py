@@ -9,12 +9,29 @@ from google.genai import types
 import requests, random, json
 import finnhub
 
+import numpy as np
+import pandas as pd
 
 from classes import *
-from stocks import NIFTY50
+from stocks import *
 
 load_dotenv()
 NIFTY50 = list(NIFTY50)
+NASDAQ = list(NASDAQ)
+
+test = AppState(
+    user_query= """Need advice on these particular stocks of Amazon, Netflix and NVIDIA
+    What is currently going on in these comapnies?
+    """,
+    stocks=["AAPL", "NVDA", "NFLX"]
+    )
+
+test2 = AppState(
+    user_query= """Need advice on these particular stocks of Amazon, Netflix and NVIDIA
+    What is currently going on in these comapnies?
+    """,
+    stocks=["NVDA", "AAPL", "NFLX"]
+    )
 
 MODEL = "llama-3.1-8b-instant"
 
@@ -155,6 +172,7 @@ def portfolio_summariser(state: UsageClassfier) -> AppState:
 
     new_state = AppState()
     new_state["usage"] = state.usage
+    new_state["user_query"] = state.user_query
     new_state['portfolio'] = response.content
     new_state['stocks'] = state.stocks
 
@@ -171,15 +189,70 @@ def usage_check(state: AppState):
         return "invalid"
 
 #Node News Extractor for every stock present in the users query
-# def news_extractor(state: AppState) -> AppState:
-def news_extractor():
+def news_extractor(state: AppState, limit = 10) -> AppState:
+    """
     
-    return None
     
-#news_extractor()
+    """
+    stocks = state['stocks']
+    API = os.environ.get("ALPHA_API")    
+    DF = pd.DataFrame(columns=["stock", "summary"])
+
+    for stock in stocks:
+        import finnhub
+        finnhub_client = finnhub.Client(api_key= os.environ.get("FINNHUB_API"))
+
+        data = finnhub_client.company_news(stock, _from="2025-04-01", to="2025-05-10")
+        final = []
+        for i in data[:limit]:
+            final.append({'stock': stock, 'summary': i['summary']})
+
+        temp = pd.DataFrame(final)
+    
+        DF = pd.concat([DF, temp], ignore_index=True)
+
+    news_text = ""
+    for stock, row in list(DF.iterrows()):
+        news_text += f"{row['stock']}\n{row['summary']}\n---\n"
+
+    #print(news_text)
+    state['news'] = news_text
+
+    prompt = f"""Choose a combined sentiment that best represents these news articles:
+
+    ```
+    {news_text}
+    ```
+
+    Each article is separated by `---`.
+
+    Go through each news summary for that particular stock and give a sentiment vlaue between -1 to 1 where sentiment_score_definition: 
+    x <= -0.35: Bearish; 
+    -0.35 < x <= -0.15: Somewhat-Bearish; 
+    -0.15 < x < 0.15: Neutral; 
+    0.15 <= x < 0.35: Somewhat_Bullish; 
+    x >= 0.35: Bullish
+
+    Reply only with the sentiment and a short explanation (1-2 sentences) of why.
+
+    When creating your answer, focus on answering the user query:
+    {state["user_query"]}
+    """
+    response = llm.invoke([HumanMessage(prompt)])
+    state["market_news"] = response.content
+
+    print(state["market_news"])
+    return state
+
+    
+test = news_extractor(test, 5)
+
 
 
 def macro_economic(state: AppState) -> AppState:
+    stocks = state["stocks"]
+    
+
     return None
 
 def market_trends(state: AppState) -> AppState:

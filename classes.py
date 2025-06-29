@@ -1,5 +1,5 @@
 from typing import TypedDict, Literal, List, Optional
-from langchain_core.pydantic_v1 import BaseModel, Field
+from pydantic import BaseModel, Field
 
 class UsageClassfier(BaseModel):
     user_query: str
@@ -20,10 +20,12 @@ class UsageClassfier(BaseModel):
 
 class AppState(TypedDict):
     usage : str
+    user_query: str
     stocks : Optional[List[str]] = []
 
     #Agent Outputs
     portfolio : str
+    news : str
     market_news : str
     market_trends : str
     macro_economics : str
