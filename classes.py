@@ -1,4 +1,4 @@
-from typing import TypedDict, Literal, List, Optional
+from typing import TypedDict, Literal, List, Optional, Dict
 from pydantic import BaseModel, Field
 
 class UsageClassfier(BaseModel):
@@ -16,19 +16,26 @@ class UsageClassfier(BaseModel):
     retirement_age: Optional[int] = None
     martial_status: Optional[str] = ""
     children: Optional[int] = None
-    stocks : Optional[List[str]] = []
+    stocks: Optional[List[str]] = Field(default_factory=list)
 
 class AppState(TypedDict):
-    usage : str
+    usage: str
     user_query: str
-    stocks : Optional[List[str]] = []
+    stocks: Optional[List[str]]
 
     #Agent Outputs
-    portfolio : str
+    portfolio: str
+
     news : str
+    news_dict: Dict
     market_news : str
-    market_trends : str
+
+    
     macro_economics : str
+    macro_economics_dict : Dict
+
+    market_trends : str
+
     advice : str
     strategy : str
     final_proposal : str
